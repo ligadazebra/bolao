@@ -719,6 +719,7 @@ let configAppCache = {};
 let adminLogado = sessionStorage.getItem('bolao_admin') === '1';
 let viewAtual = 'jogos';
 let jogoSelecionado = null;
+let adminTabAtual = 'novo';
 
 /* ===================== UTIL ===================== */
 function toast(msg){
@@ -844,6 +845,14 @@ db.ref('palpites').on('value', snap=>{
   });
   palpitesCache = novoCache;
   render();
+});
+db.ref('configApp/chavePix').on('value', snap=>{
+  configAppCache.chavePix = snap.val() || '';
+  if(viewAtual==='admin' && adminTabAtual==='config') render();
+});
+db.ref('configApp/qrCodePix').on('value', snap=>{
+  configAppCache.qrCodePix = snap.val() || '';
+  if(viewAtual==='admin' && adminTabAtual==='config') render();
 });
 db.ref('configApp/logoUrl').on('value', snap=>{
   const urlCustom = snap.val();
@@ -1213,12 +1222,46 @@ function bindEvents(){
   if(btnSalvarLogo) btnSalvarLogo.onclick = ()=>{
     const url = document.getElementById('novaLogoUrl').value.trim();
     if(!url){ toast('Cole a URL da imagem'); return; }
-    db.ref('configApp/logoUrl').set(url).then(()=>toast('Logo atualizada!'));
+    db.ref('configApp/logoUrl').set(url).then(()=>toast('Logo atualizada!')).catch(()=>toast('❌ Erro ao salvar logo.'));
   };
   const btnRemoverLogo = document.getElementById('btnRemoverLogo');
   if(btnRemoverLogo) btnRemoverLogo.onclick = ()=>{
     if(!confirm('Remover a logo do cabeçalho?')) return;
-    db.ref('configApp/logoUrl').remove().then(()=>toast('Logo removida'));
+    db.ref('configApp/logoUrl').remove().then(()=>toast('Logo removida')).catch(()=>toast('❌ Erro ao remover logo.'));
+  };
+
+  // --- Chave Pix ---
+  const btnSalvarChavePix = document.getElementById('btnSalvarChavePix');
+  if(btnSalvarChavePix) btnSalvarChavePix.onclick = ()=>{
+    const chave = document.getElementById('inputChavePix').value.trim();
+    if(!chave){ toast('Digite a chave Pix'); return; }
+    db.ref('configApp/chavePix').set(chave).then(()=>toast('✅ Chave Pix salva!')).catch(()=>toast('❌ Erro ao salvar chave Pix.'));
+  };
+
+  // --- QR Code Pix ---
+  const inputQrCode = document.getElementById('inputQrCode');
+  if(inputQrCode) inputQrCode.onchange = ()=>{
+    const file = inputQrCode.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const b64 = e.target.result;
+      document.getElementById('previewQrCodeImg').src = b64;
+      document.getElementById('previewQrCode').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+  const btnSalvarQrCode = document.getElementById('btnSalvarQrCode');
+  if(btnSalvarQrCode) btnSalvarQrCode.onclick = ()=>{
+    const preview = document.getElementById('previewQrCodeImg');
+    const src = preview ? preview.src : '';
+    if(!src || !src.startsWith('data:image')){ toast('Selecione uma imagem primeiro'); return; }
+    db.ref('configApp/qrCodePix').set(src).then(()=>toast('✅ QR Code salvo!')).catch(()=>toast('❌ Erro ao salvar QR Code.'));
+  };
+  const btnRemoverQrCode = document.getElementById('btnRemoverQrCode');
+  if(btnRemoverQrCode) btnRemoverQrCode.onclick = ()=>{
+    if(!confirm('Remover o QR Code?')) return;
+    db.ref('configApp/qrCodePix').remove().then(()=>toast('QR Code removido')).catch(()=>toast('❌ Erro ao remover QR Code.'));
   };
 
   const btnCriarJogo = document.getElementById('btnCriarJogo');
@@ -1385,6 +1428,9 @@ function enviarPalpite(){
       render();
       mostrarPix();
     }
+  }).catch(err=>{
+    console.error('Erro ao salvar palpite:', err);
+    toast('❌ Erro ao enviar palpite. Verifique sua conexão e tente novamente.');
   });
 }
 
@@ -1423,12 +1469,11 @@ function mostrarPix(){
     <p style="font-size:.88rem;color:var(--cinza)">Agora é só pagar via Pix para confirmar sua participação. Seu palpite só entra no jogo depois da confirmação manual do pagamento.</p>
     <div class="pix-box" style="text-align:center">
       <strong>Valor: ${formatBRL(j.valor)}</strong>
-      <img src="${QRCODE_PIX_URL}" alt="QR Code Pix" style="display:block;max-width:220px;width:100%;margin:12px auto;border-radius:8px;border:1px solid #eee">
+      ${configAppCache.qrCodePix ? `<img src="${configAppCache.qrCodePix}" alt="QR Code Pix" style="display:block;max-width:220px;width:100%;margin:12px auto;border-radius:8px;border:1px solid #eee">` : (QRCODE_PIX_URL ? `<img src="${QRCODE_PIX_URL}" alt="QR Code Pix" style="display:block;max-width:220px;width:100%;margin:12px auto;border-radius:8px;border:1px solid #eee">` : '')}
       <div style="text-align:left">
         Chave Pix (${NOME_RECEBEDOR}):
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-          <code id="chavePixPrincipal">${CHAVE_PIX}</code>
-          <button onclick="navigator.clipboard.writeText('${CHAVE_PIX}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>
+          ${(()=>{ const ch = configAppCache.chavePix || CHAVE_PIX; return `<code id="chavePixPrincipal">${ch}</code><button onclick="navigator.clipboard.writeText('${ch}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>`; })()}
         </div>
       </div>
     </div>
@@ -1548,11 +1593,10 @@ document.addEventListener('click', e=>{
         ${!p.pago ? `<div class="pix-box" style="margin-top:10px;text-align:center">
           <div style="font-weight:800;color:var(--vermelho);margin-bottom:6px">⚠️ Palpite ainda não confirmado!</div>
           <strong>Pague ${formatBRL(j.valor)} via Pix para garantir sua participação</strong>
-          <img src="${QRCODE_PIX_URL}" alt="QR Code Pix" style="display:block;max-width:180px;width:100%;margin:10px auto;border-radius:8px;border:1px solid #eee">
+          <img src="${configAppCache.qrCodePix || QRCODE_PIX_URL}" alt="QR Code Pix" style="display:block;max-width:180px;width:100%;margin:10px auto;border-radius:8px;border:1px solid #eee">
           <div style="text-align:left">Chave: 
             <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-              <code>${CHAVE_PIX}</code>
-              <button onclick="navigator.clipboard.writeText('${CHAVE_PIX}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>
+              ${(()=>{ const ch2 = configAppCache.chavePix || CHAVE_PIX; return `<code>${ch2}</code><button onclick="navigator.clipboard.writeText('${ch2}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>`; })()}
             </div>
           </div>
         </div>` : ''}
@@ -1562,7 +1606,6 @@ document.addEventListener('click', e=>{
 });
 
 /* ===================== ADMIN ===================== */
-let adminTabAtual = 'novo';
 
 function renderAdminLogin(){
   return `
@@ -1573,9 +1616,17 @@ function renderAdminLogin(){
     <button class="btn btn-secondary" id="btnVoltarLogin" style="margin-top:8px">Voltar</button>
   </div>`;
 }
+/* Contador de tentativas de login — bloqueia após 5 falhas por sessão */
+let _tentativasLogin = 0;
+const MAX_TENTATIVAS_LOGIN = 5;
+
 function loginAdmin(){
   const senha = document.getElementById('senhaAdmin').value.trim();
   if(!senha){ toast('Digite a senha'); return; }
+  if(_tentativasLogin >= MAX_TENTATIVAS_LOGIN){
+    toast('⛔ Muitas tentativas. Recarregue a página.');
+    return;
+  }
   db.ref('config/senhAdmin').once('value').then(snap=>{
     const senhaCorreta = snap.val();
     if(!senhaCorreta){
@@ -1583,14 +1634,21 @@ function loginAdmin(){
       return;
     }
     if(senha === senhaCorreta){
+      _tentativasLogin = 0;
       sessionStorage.setItem('bolao_admin','1');
       adminLogado = true;
       render();
     } else {
-      toast('Senha incorreta');
+      _tentativasLogin++;
+      const restantes = MAX_TENTATIVAS_LOGIN - _tentativasLogin;
+      if(restantes > 0){
+        toast(`Senha incorreta. ${restantes} tentativa(s) restante(s).`);
+      } else {
+        toast('⛔ Acesso bloqueado. Recarregue a página para tentar novamente.');
+      }
     }
   }).catch(()=>{
-    toast('Erro ao conectar ao Firebase. Verifique sua conexão.');
+    toast('❌ Erro ao conectar ao Firebase. Verifique sua conexão.');
   });
 }
 
@@ -1710,6 +1768,8 @@ document.addEventListener('click', e=>{
 
 function renderAdminConfig(){
   const logoAtual = configAppCache.logoUrl || '';
+  const chavePix = configAppCache.chavePix || '';
+  const qrCodePix = configAppCache.qrCodePix || '';
   return `
   <div class="card">
     <h3 style="margin-bottom:6px;font-size:1rem">🖼️ Banner do cabeçalho (URL)</h3>
@@ -1722,6 +1782,38 @@ function renderAdminConfig(){
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="btn btn-primary" id="btnSalvarLogo">Salvar banner</button>
       ${logoAtual ? `<button class="btn btn-secondary" id="btnRemoverLogo">Remover (voltar ao padrão)</button>` : ''}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:6px;font-size:1rem">💠 Chave Pix</h3>
+    <p class="small-text" style="margin-bottom:12px">Chave usada para receber pagamentos. Pode ser telefone, CPF, e-mail ou chave aleatória.</p>
+    <div class="field">
+      <label>Chave Pix</label>
+      <input type="text" id="inputChavePix" placeholder="Ex: 73999997319" value="${chavePix}">
+    </div>
+    <button class="btn btn-primary" id="btnSalvarChavePix">Salvar chave Pix</button>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:6px;font-size:1rem">📷 QR Code do Pix</h3>
+    <p class="small-text" style="margin-bottom:12px">Imagem do QR Code exibida na tela de pagamento. Faça upload de uma imagem JPG ou PNG.</p>
+    ${qrCodePix ? `
+      <div style="margin-bottom:12px;text-align:center">
+        <img src="${qrCodePix}" alt="QR Code Pix" style="max-width:200px;border-radius:12px;border:2px solid var(--verde)">
+        <p class="small-text" style="margin-top:6px">QR Code atual</p>
+      </div>` : `<p class="small-text" style="margin-bottom:12px">Nenhum QR Code salvo ainda.</p>`}
+    <div class="field">
+      <label>Selecionar imagem do QR Code</label>
+      <input type="file" id="inputQrCode" accept="image/*" style="padding:8px 0">
+    </div>
+    <div id="previewQrCode" style="margin-bottom:12px;display:none;text-align:center">
+      <img id="previewQrCodeImg" alt="preview" style="max-width:180px;border-radius:12px;border:2px dashed var(--cinza)">
+      <p class="small-text" style="margin-top:4px">Preview</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="btnSalvarQrCode">Salvar QR Code</button>
+      ${qrCodePix ? `<button class="btn btn-secondary" id="btnRemoverQrCode">Remover QR Code</button>` : ''}
     </div>
   </div>
   `;
@@ -1812,6 +1904,9 @@ function criarJogo(){
   }).then(()=>{
     toast('Jogo criado!');
     render();
+  }).catch(err=>{
+    console.error('Erro ao criar jogo:', err);
+    toast('❌ Erro ao criar jogo. Verifique sua conexão.');
   });
 }
 
@@ -1825,7 +1920,10 @@ function editarBandeira(id){
   db.ref('jogos/'+id).update({
     imagemA: novaA.trim() || null,
     imagemB: novaB.trim() || null
-  }).then(()=>toast('Imagem(ns) atualizada(s)!'));
+  }).then(()=>toast('Imagem(ns) atualizada(s)!')).catch(err=>{
+    console.error('Erro ao atualizar imagem:', err);
+    toast('❌ Erro ao salvar. Tente novamente.');
+  });
 }
 
 function abrirModalEditarJogo(id){
@@ -1874,17 +1972,26 @@ function abrirModalEditarJogo(id){
       toast('✅ Jogo atualizado!');
       div.remove();
       render();
+    }).catch(err=>{
+      console.error('Erro ao salvar jogo:', err);
+      toast('❌ Erro ao salvar. Tente novamente.');
     });
   };
 }
 
 function excluirJogo(id){
   if(!confirm('Excluir este jogo e todos os palpites relacionados?')) return;
-  db.ref('jogos/'+id).remove();
+  const updates = {};
+  updates['jogos/'+id] = null;
   Object.entries(palpitesCache).filter(([_,p])=>p.jogoId===id).forEach(([pid])=>{
-    db.ref('palpites/'+pid).remove();
+    updates['palpites/'+pid] = null;
   });
-  toast('Jogo excluído');
+  db.ref().update(updates).then(()=>{
+    toast('Jogo excluído');
+  }).catch(err=>{
+    console.error('Erro ao excluir jogo:', err);
+    toast('❌ Erro ao excluir. Tente novamente.');
+  });
 }
 
 function renderAdminPagamentos(){
@@ -1952,11 +2059,17 @@ function confirmarPagamento(id){
       const msg = encodeURIComponent(`Oi ${p.nome}! Confirmamos seu pagamento do bolão (${j?`${j.timeA} x ${j.timeB}`:''} — palpite ${p.placarA}x${p.placarB}). Boa sorte! ⚽`);
       window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
     }
+  }).catch(err=>{
+    console.error('Erro ao confirmar pagamento:', err);
+    toast('❌ Erro ao confirmar pagamento. Tente novamente.');
   });
 }
 function removerPalpite(id){
   if(!confirm('Remover este palpite?')) return;
-  db.ref('palpites/'+id).remove().then(()=>toast('Palpite removido'));
+  db.ref('palpites/'+id).remove().then(()=>toast('Palpite removido')).catch(err=>{
+    console.error('Erro ao remover palpite:', err);
+    toast('❌ Erro ao remover. Tente novamente.');
+  });
 }
 
 function renderAdminResultados(){
@@ -2012,18 +2125,27 @@ function lancarResultado(jogoId){
   }).then(()=>{
     toast('Resultado lançado!');
     render();
+  }).catch(err=>{
+    console.error('Erro ao lançar resultado:', err);
+    toast('❌ Erro ao lançar resultado. Tente novamente.');
   });
 }
 
 function sortearGanhador(jogoId){
   const pagos = Object.entries(palpitesCache).filter(([_,p])=>p.jogoId===jogoId && p.pago);
   if(pagos.length===0){ toast('Nenhum participante pago para sortear'); return; }
-  const sorteadoIdx = Math.floor(Math.random()*pagos.length);
+  /* Usa crypto.getRandomValues() — seguro e não previsível */
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  const sorteadoIdx = arr[0] % pagos.length;
   const [sorteadoId, sorteadoPalpite] = pagos[sorteadoIdx];
   if(!confirm(`Sortear entre ${pagos.length} participantes pagos?`)) return;
   db.ref('jogos/'+jogoId+'/sorteioId').set(sorteadoId).then(()=>{
     toast(`🎉 Sorteado: ${sorteadoPalpite.nome}`);
     render();
+  }).catch(err=>{
+    console.error('Erro ao registrar sorteio:', err);
+    toast('❌ Erro ao registrar sorteio. Tente novamente.');
   });
 }
 
@@ -2054,6 +2176,55 @@ function sortearGanhador(jogoId){
 
 /* ===================== INIT ===================== */
 render();
+
+/*
+ * =====================================================================
+ * SEGURANÇA — FIREBASE REALTIME DATABASE RULES (configure no Console)
+ * =====================================================================
+ * Acesse: https://console.firebase.google.com → ligadazebra → Realtime Database → Rules
+ * Cole as regras abaixo e publique:
+ *
+ * {
+ *   "rules": {
+ *     "jogos": {
+ *       ".read": true,
+ *       ".write": false,
+ *       "$id": {
+ *         ".write": false
+ *       }
+ *     },
+ *     "palpites": {
+ *       ".read": true,
+ *       "$id": {
+ *         ".write": "!data.exists()",
+ *         ".validate": "newData.hasChildren(['jogoId','nome','telefone','placarA','placarB','pago','criadoEm'])
+ *                    && newData.child('pago').isBoolean()
+ *                    && newData.child('pago').val() === false
+ *                    && newData.child('placarA').isNumber()
+ *                    && newData.child('placarB').isNumber()
+ *                    && newData.child('nome').isString()
+ *                    && newData.child('nome').val().length >= 2
+ *                    && newData.child('telefone').isString()"
+ *       }
+ *     },
+ *     "config": {
+ *       ".read": false,
+ *       ".write": false
+ *     },
+ *     "configApp": {
+ *       ".read": true,
+ *       ".write": false
+ *     }
+ *   }
+ * }
+ *
+ * IMPORTANTE: Com essas regras, operações de ADMIN (confirmar pix, criar jogo, etc.)
+ * precisam de permissões de ESCRITA. Para isso, use Firebase Authentication
+ * ou configure regras específicas para o admin usando Custom Claims.
+ * Opção mais simples: use as regras acima para proteger leitura de config/senhAdmin
+ * e mantenha escrita de jogos/palpites via Admin SDK (Cloud Functions).
+ * =====================================================================
+ */
 
 /* Atualiza as contagens regressivas a cada segundo, sem re-renderizar a tela inteira
    (evita perder o foco de inputs enquanto a pessoa digita o palpite) */
