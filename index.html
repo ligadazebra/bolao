@@ -718,6 +718,7 @@ let configAppCache = {};
 let adminLogado = sessionStorage.getItem('bolao_admin') === '1';
 let viewAtual = 'jogos';
 let jogoSelecionado = null;
+let pixVisivel = false;
 let adminTabAtual = 'novo';
 
 /* ===================== UTIL ===================== */
@@ -845,25 +846,18 @@ db.ref('palpites').on('value', snap=>{
   palpitesCache = novoCache;
   render();
 });
-db.ref('configApp/chavePix').on('value', snap=>{
-  configAppCache.chavePix = snap.val() || '';
-  if(viewAtual==='admin' && adminTabAtual==='config') render();
-});
-db.ref('configApp/nomeRecebedor').on('value', snap=>{
-  configAppCache.nomeRecebedor = snap.val() || '';
-  if(viewAtual==='admin' && adminTabAtual==='config') render();
-});
-db.ref('configApp/qrCodePix').on('value', snap=>{
-  configAppCache.qrCodePix = snap.val() || '';
-  if(viewAtual==='admin' && adminTabAtual==='config') render();
-});
-db.ref('configApp/logoUrl').on('value', snap=>{
-  const urlCustom = snap.val();
-  const url = urlCustom || BANNER_HEADER_PADRAO; // se o admin não trocou ainda, usa o banner padrão embutido
-  configAppCache.logoUrl = urlCustom || '';
-  const logoEl = document.getElementById('logoApp');
+db.ref('configApp').on('value', snap=>{
+  const cfg = snap.val() || {};
+  configAppCache.chavePix      = cfg.chavePix      || '';
+  configAppCache.nomeRecebedor = cfg.nomeRecebedor || '';
+  configAppCache.qrCodePix     = cfg.qrCodePix     || '';
+  configAppCache.logoUrl       = cfg.logoUrl       || '';
+  // Atualiza banner do cabeçalho
+  const urlCustom = cfg.logoUrl;
+  const url = urlCustom || BANNER_HEADER_PADRAO;
+  const logoEl     = document.getElementById('logoApp');
   const fallbackEl = document.getElementById('headerFallback');
-  const headerEl = document.getElementById('headerApp');
+  const headerEl   = document.getElementById('headerApp');
   if(url){
     logoEl.src = url;
     logoEl.classList.remove('hidden');
@@ -875,6 +869,7 @@ db.ref('configApp/logoUrl').on('value', snap=>{
     headerEl.classList.remove('com-banner');
   }
   if(viewAtual==='admin' && adminTabAtual==='config') render();
+  if(pixVisivel) mostrarPix();
 });
 
 let primeiroCarregamentoPalpites = true;
@@ -950,6 +945,7 @@ function tocarBeep(){
 
 /* ===================== RENDER PRINCIPAL ===================== */
 function render(){
+  pixVisivel = false;
   const app = document.getElementById('app');
   if(viewAtual === 'jogos'){
     app.innerHTML = jogoSelecionado ? renderDetalheJogo(jogoSelecionado) : renderListaJogos();
@@ -1470,6 +1466,7 @@ function mostrarConfirmacaoMultipla(nome, placarA, placarB){
 }
 
 function mostrarPix(){
+  pixVisivel = true;
   const j = jogosCache[jogoSelecionado];
   const app = document.getElementById('app');
   app.innerHTML = `
