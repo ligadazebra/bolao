@@ -1474,12 +1474,14 @@ function mostrarPix(){
     <h3 style="margin-bottom:10px">✅ Palpite registrado!</h3>
     <p style="font-size:.88rem;color:var(--cinza)">Agora é só pagar via Pix para confirmar sua participação. Seu palpite só entra no jogo depois da confirmação manual do pagamento.</p>
     <div class="pix-box" style="text-align:center">
-      <strong>Valor: ${formatBRL(j.valor)}</strong>
+      <strong style="font-size:1.1rem">Valor: ${formatBRL(j.valor)}</strong>
       ${configAppCache.qrCodePix ? `<img src="${configAppCache.qrCodePix}" alt="QR Code Pix" style="display:block;max-width:220px;width:100%;margin:12px auto;border-radius:8px;border:1px solid #eee">` : ''}
-      <div style="text-align:left">
-        Chave Pix${configAppCache.nomeRecebedor ? ` (${configAppCache.nomeRecebedor})` : ''}:
+      <div style="text-align:left;margin-top:10px">
+        ${configAppCache.nomeRecebedor ? `<div style="margin-bottom:6px"><span style="color:var(--cinza);font-size:.85rem">Recebedor:</span><br><strong style="font-size:1rem">${configAppCache.nomeRecebedor}</strong></div>` : ''}
+        <div><span style="color:var(--cinza);font-size:.85rem">Chave Pix:</span></div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-          ${(()=>{ const ch = configAppCache.chavePix || CHAVE_PIX; return `<code id="chavePixPrincipal">${ch}</code><button onclick="navigator.clipboard.writeText('${ch}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>`; })()}
+          <code id="chavePixPrincipal" style="font-size:.95rem;word-break:break-all">${configAppCache.chavePix}</code>
+          <button onclick="navigator.clipboard.writeText('${configAppCache.chavePix}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>
         </div>
       </div>
     </div>
@@ -1600,9 +1602,12 @@ document.addEventListener('click', e=>{
           <div style="font-weight:800;color:var(--vermelho);margin-bottom:6px">⚠️ Palpite ainda não confirmado!</div>
           <strong>Pague ${formatBRL(j.valor)} via Pix para garantir sua participação</strong>
           ${configAppCache.qrCodePix ? `<img src="${configAppCache.qrCodePix}" alt="QR Code Pix" style="display:block;max-width:180px;width:100%;margin:10px auto;border-radius:8px;border:1px solid #eee">` : ''}
-          <div style="text-align:left">Chave: 
+          <div style="text-align:left;margin-top:8px">
+            ${configAppCache.nomeRecebedor ? `<div style="margin-bottom:6px"><span style="color:var(--cinza);font-size:.82rem">Recebedor:</span><br><strong>${configAppCache.nomeRecebedor}</strong></div>` : ''}
+            <div><span style="color:var(--cinza);font-size:.82rem">Chave Pix:</span></div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-              ${(()=>{ const ch2 = configAppCache.chavePix || CHAVE_PIX; return `<code>${ch2}</code><button onclick="navigator.clipboard.writeText('${ch2}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>`; })()}
+              <code style="word-break:break-all">${configAppCache.chavePix}</code>
+              <button onclick="navigator.clipboard.writeText('${configAppCache.chavePix}').then(()=>{ this.textContent='✅'; setTimeout(()=>this.textContent='📋',1500); })" title="Copiar chave Pix" style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:1rem;flex-shrink:0">📋</button>
             </div>
           </div>
         </div>` : ''}
